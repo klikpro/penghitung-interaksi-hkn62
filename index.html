@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Penghitung Interaksi Media Sosial — Lomba Video HKN 62</title>
+<style>
+:root{--bg:#f3f6fb;--card:#fff;--tx:#1b2433;--mut:#64708a;--pri:#0a7d6b;--pri2:#086354;--bd:#e1e7f0;--warn:#b45309;--err:#b91c1c;--ok:#15803d}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--tx);line-height:1.5}
+header{background:linear-gradient(135deg,#0a7d6b,#0b5ea8);color:#fff;padding:28px 16px}
+header .w,main{max-width:1180px;margin:0 auto}
+header h1{margin:0 0 6px;font-size:clamp(1.25rem,3.5vw,1.8rem)}
+header p{margin:0;opacity:.92;max-width:820px}
+main{padding:16px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 1px 3px rgba(20,30,60,.05)}
+.card h2{margin:0 0 10px;font-size:1.05rem}
+textarea,input,select{font:inherit;border:1px solid var(--bd);border-radius:10px;padding:9px 11px;background:#fff;color:var(--tx)}
+textarea{width:100%;resize:vertical;min-height:64px}
+textarea:focus,input:focus,select:focus{outline:2px solid #9ad8cc;border-color:var(--pri)}
+button{font:inherit;cursor:pointer;border:0;border-radius:10px;padding:9px 16px;background:var(--pri);color:#fff;font-weight:600}
+button:hover{background:var(--pri2)}
+button:disabled{opacity:.55;cursor:not-allowed}
+button.sec{background:#eaf0f8;color:#1b2433}
+button.sec:hover{background:#dce6f3}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.row.sp{justify-content:space-between}
+.hint{color:var(--mut);font-size:.85rem;margin:6px 0}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:980px;font-size:.9rem}
+th,td{padding:8px 10px;border-bottom:1px solid var(--bd);text-align:left;vertical-align:top}
+th{background:#f6f9fd;font-size:.78rem;text-transform:uppercase;letter-spacing:.03em;color:var(--mut);white-space:nowrap}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+td.nm input{width:170px;padding:6px 8px}
+td.lk{max-width:220px;word-break:break-all}
+td.lk a{color:#0b5ea8;text-decoration:none}
+td.tm{white-space:nowrap;font-size:.8rem;color:var(--mut)}
+.msg{font-size:.72rem;color:var(--mut);margin-top:3px;max-width:210px}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:99px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.badge.lengkap{background:#dcfce7;color:var(--ok)}
+.badge.parsial{background:#fef3c7;color:var(--warn)}
+.badge.gagal{background:#fee2e2;color:var(--err)}
+.badge.none{background:#eef1f6;color:var(--mut)}
+.badge.load{background:#e0f2fe;color:#0369a1}
+.sp{display:inline-block}
+i.sp{width:11px;height:11px;border:2px solid #7dd3fc;border-top-color:#0369a1;border-radius:50%;animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.pf{font-weight:700;font-size:.82rem}
+.pf.tiktok{color:#111}
+.pf.instagram{color:#c13584}
+.pf.facebook{color:#1877f2}
+.del{background:#fee2e2;color:var(--err);padding:5px 10px;font-size:.8rem}
+.del:hover{background:#fecaca}
+.star{color:var(--warn);font-weight:700;cursor:help}
+.strong{font-weight:700}
+.note{font-size:.85rem;color:var(--mut)}
+.note ul{margin:6px 0;padding-left:18px}
+#countdown{font-size:.88rem;color:var(--mut)}
+.empty{text-align:center;color:var(--mut);padding:22px}
+@media(max-width:600px){main{padding:10px}.card{padding:12px}}
+</style>
+</head>
+<body>
+<header><div class="w"><h1>Penghitung Interaksi Media Sosial — Lomba Video HKN 62</h1><p>Angka views, likes, comments, dan shares dibaca dari halaman publik link video (TikTok, Instagram, Facebook) lewat server, lalu dihitung menjadi Skor Interaksi dan estimasi nilai per instansi.</p></div></header>
+<main>
+<section class="card"><h2>Tambah Link Video</h2><textarea id="linkInput" placeholder="Tempel link di sini. Boleh beberapa link sekaligus, pisahkan dengan baris baru."></textarea><div class="row" style="margin-top:10px"><button id="addBtn">Tambah</button><span class="hint" style="margin:0">Link yang sudah ada tidak ditambahkan dua kali.</span></div></section>
+<section class="card"><div class="row sp" style="margin-bottom:10px"><h2 style="margin:0">Data per Link</h2><div class="row"><button id="refreshBtn">Hitung / Perbarui Semua</button><label class="row" style="gap:6px">Auto-refresh <select id="autoSel"><option value="0">Mati</option><option value="30">30 menit</option><option value="60">1 jam</option></select></label><span id="countdown"></span></div></div><div class="tw"><table><thead><tr><th>#</th><th>Nama / Instansi</th><th>Platform</th><th>Link</th><th class="num">Views</th><th class="num">Likes</th><th class="num">Comments</th><th class="num">Shares</th><th class="num">Skor Interaksi</th><th>Status</th><th>Update Terakhir</th><th>Aksi</th></tr></thead><tbody id="tbody"></tbody></table></div><p class="hint"><span class="star">*</span> = skor parsial (ada angka yang tidak terbaca, sehingga skor sebenarnya bisa lebih tinggi). Tanda "—" berarti angka tidak ditemukan, bukan nol. Auto-refresh hanya berjalan selama halaman ini terbuka.</p></section>
+<section class="card"><div class="row sp" style="margin-bottom:10px"><h2 style="margin:0">Rekap per Instansi &amp; Estimasi Nilai Interaksi (maks 30)</h2><button id="csvBtn" class="sec">Ekspor CSV</button></div><div class="tw"><table style="min-width:760px"><thead><tr><th>Peringkat</th><th>Nama / Instansi</th><th class="num">Jumlah Link</th><th class="num">Views</th><th class="num">Likes</th><th class="num">Comments</th><th class="num">Shares</th><th class="num">Skor Interaksi</th><th class="num">Estimasi Nilai (maks 30)</th></tr></thead><tbody id="recap"></tbody></table></div><div class="note"><ul><li><b>Skor Interaksi</b> = Views + (2 × Likes) + (5 × Comments) + (10 × Shares), dihitung hanya dari angka yang tersedia.</li><li><b>Estimasi Nilai</b> bersifat proporsional: instansi dengan total Skor Interaksi tertinggi mendapat 30, instansi lain = 30 × (skornya ÷ skor tertinggi). Ini hanya estimasi, bukan nilai resmi juri.</li><li>Beri nama instansi yang sama pada beberapa link agar skornya dijumlahkan. Link tanpa nama dihitung terpisah.</li><li>Instansi dengan data parsial atau gagal terbaca bisa tampak lebih rendah dari kenyataan. Verifikasi manual bila selisih tipis.</li></ul></div></section>
+</main>
+<script>
+(function(){
+'use strict';
+var KEY='hkn62_penghitung_v1';
+var SEED=[
+'https://www.tiktok.com/@kemenkesri/video/7513551109504437509?is_from_webapp=1&sender_device=pc',
+'https://www.instagram.com/reel/C6f9lYVv1GR/?utm_source=ig_web_copy_link',
+'https://www.facebook.com/reel/1982045442579025'
+];
+var KEYS=['views','likes','comments','shares'];
+var W={views:1,likes:2,comments:5,shares:10};
+var fmt=new Intl.NumberFormat('id-ID');
+var fmt2=new Intl.NumberFormat('id-ID',{minimumFractionDigits:2,maximumFractionDigits:2});
+var $=function(s){return document.querySelector(s);};
+var state={items:[],interval:0,nextAt:null};
+var tick=null,busy=false;
+function uid(){return Math.random().toString(36).slice(2,9)+Date.now().toString(36);}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function platformOf(url){try{var h=new URL(url).hostname.toLowerCase();if(/tiktok\.com$/.test(h))return 'TikTok';if(/instagram\.com$/.test(h))return 'Instagram';if(/(facebook\.com|fb\.watch|fb\.com)$/.test(h))return 'Facebook';}catch(e){}return 'Lainnya';}
+function shorten(u){var s=u.replace(/^https?:\/\/(www\.)?/,'');return s.length>48?s.slice(0,46)+'…':s;}
+function load(){try{var s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.items)){state.items=s.items.map(function(i){i.loading=false;return i;});state.interval=+s.interval||0;return;}}catch(e){}state.items=SEED.map(function(u){return {id:uid(),url:u,name:'',data:null,loading:false};});}
+function save(){try{localStorage.setItem(KEY,JSON.stringify({interval:state.interval,items:state.items.map(function(i){return {id:i.id,url:i.url,name:i.name,data:i.data};})}));}catch(e){}}
+function score(d){if(!d)return {v:null,partial:true};var sum=0,found=0;KEYS.forEach(function(k){if(d[k]!=null){sum+=W[k]*d[k];found++;}});return {v:found?sum:null,partial:found<4};}
+function buildRecap(){var g=new Map();state.items.forEach(function(it,idx){var nm=(it.name||'').trim();var key=nm?nm.toLowerCase():'__'+it.id;var r=g.get(key);if(!r){r={label:nm||'(Tanpa nama — '+platformOf(it.url)+' #'+(idx+1)+')',links:0,views:null,likes:null,comments:null,shares:null,score:null,partial:false};g.set(key,r);}r.links++;var d=it.data;KEYS.forEach(function(k){if(d&&d[k]!=null)r[k]=(r[k]||0)+d[k];});var s=score(d);if(s.v!=null)r.score=(r.score||0)+s.v;if(s.partial)r.partial=true;});var arr=Array.from(g.values());var max=0;arr.forEach(function(r){if(r.score!=null&&r.score>max)max=r.score;});arr.forEach(function(r){r.nilai=(max>0&&r.score!=null)?30*r.score/max:null;});arr.sort(function(a,b){return (b.score||0)-(a.score||0);});return arr;}
+function dynCells(it){var d=it.data,s=score(d),pf=platformOf(it.url);var n=function(k){return d&&d[k]!=null?fmt.format(d[k]):'—';};var st;if(it.loading)st='<span class="badge load"><i class="sp"></i>Memuat…</span>';else if(d)st='<span class="badge '+esc(d.status)+'">'+({lengkap:'Lengkap',parsial:'Parsial',gagal:'Gagal'}[d.status]||esc(d.status))+'</span>';else st='<span class="badge none">Belum dicek</span>';var sc=s.v==null?'—':'<span class="strong">'+fmt.format(s.v)+'</span>'+(s.partial?' <span class="star" title="Skor parsial: ada angka yang tidak terbaca">*</span>':'');var tm=d&&d.fetchedAt?new Date(d.fetchedAt).toLocaleString('id-ID',{dateStyle:'medium',timeStyle:'short'}):'—';return '<td><span class="pf '+pf.toLowerCase()+'">'+pf+'</span></td>'+'<td class="lk"><a href="'+esc(it.url)+'" target="_blank" rel="noopener" title="'+esc(it.url)+'">'+esc(shorten(it.url))+'</a></td>'+'<td class="num">'+n('views')+'</td><td class="num">'+n('likes')+'</td><td class="num">'+n('comments')+'</td><td class="num">'+n('shares')+'</td>'+'<td class="num">'+sc+'</td>'+'<td>'+st+'<div class="msg">'+esc(d&&d.message?d.message:'')+'</div></td>'+'<td class="tm">'+tm+'</td>'+'<td><button class="del" data-del="'+it.id+'">Hapus</button></td>';}
+function renderTable(){var tb=$('#tbody');if(!state.items.length){tb.innerHTML='<tr><td colspan="12" class="empty">Belum ada link. Tambahkan link video di atas.</td></tr>';return;}tb.innerHTML=state.items.map(function(it,i){return '<tr data-id="'+it.id+'"><td class="idx">'+(i+1)+'</td>'+'<td class="nm"><input data-name="'+it.id+'" value="'+esc(it.name)+'" placeholder="Nama / instansi"></td>'+dynCells(it)+'</tr>';}).join('');}
+function renderRow(it){var tr=document.querySelector('tr[data-id="'+it.id+'"]');if(!tr)return;while(tr.children.length>2)tr.lastChild.remove();tr.insertAdjacentHTML('beforeend',dynCells(it));}
+function renderRecap(){var arr=buildRecap(),tb=$('#recap');if(!arr.length){tb.innerHTML='<tr><td colspan="9" class="empty">Belum ada data.</td></tr>';return;}var c=function(v){return v==null?'—':fmt.format(v);};tb.innerHTML=arr.map(function(r,i){var sc=r.score==null?'—':'<span class="strong">'+fmt.format(r.score)+'</span>'+(r.partial?' <span class="star" title="Skor parsial">*</span>':'');var nl=r.nilai==null?'—':'<span class="strong">'+fmt2.format(r.nilai)+'</span>'+(r.partial?' <span class="star" title="Estimasi dari skor parsial">*</span>':'');return '<tr><td>'+(i+1)+'</td><td>'+esc(r.label)+'</td><td class="num">'+r.links+'</td><td class="num">'+c(r.views)+'</td><td class="num">'+c(r.likes)+'</td><td class="num">'+c(r.comments)+'</td><td class="num">'+c(r.shares)+'</td><td class="num">'+sc+'</td><td class="num">'+nl+'</td></tr>';}).join('');}
+function setBtns(){var b=$('#refreshBtn');b.disabled=busy;b.textContent=busy?'Memuat…':'Hitung / Perbarui Semua';}
+function applyResult(it,d){var had=it.data&&KEYS.some(function(k){return it.data[k]!=null;});if(d.status==='gagal'&&had){it.data=Object.assign({},it.data,{message:'Pembaruan gagal ('+(d.message||'tanpa keterangan')+'). Menampilkan data terakhir yang berhasil.'});return;}it.data={views:d.views==null?null:d.views,likes:d.likes==null?null:d.likes,comments:d.comments==null?null:d.comments,shares:d.shares==null?null:d.shares,status:d.status||'gagal',message:d.message||'',fetchedAt:d.fetchedAt||new Date().toISOString()};}
+async function refreshOne(it){var t;try{var ctrl=new AbortController();t=setTimeout(function(){ctrl.abort();},25000);var r=await fetch('/api/stats?url='+encodeURIComponent(it.url),{signal:ctrl.signal,cache:'no-store'});var d=await r.json();applyResult(it,d);}catch(e){applyResult(it,{status:'gagal',message:'Tidak dapat menghubungi /api/stats ('+e.message+')',fetchedAt:new Date().toISOString()});}finally{clearTimeout(t);}it.loading=false;save();}
+async function refreshItems(list){if(busy||!list.length)return;busy=true;setBtns();list.forEach(function(i){i.loading=true;renderRow(i);});var idx=0;async function worker(){while(idx<list.length){var it=list[idx++];await refreshOne(it);renderRow(it);renderRecap();}}await Promise.all([worker(),worker(),worker()]);busy=false;setBtns();save();renderRecap();if(state.interval)state.nextAt=Date.now()+state.interval*60000;}
+function refreshAll(){return refreshItems(state.items.slice());}
+function setupAuto(){clearInterval(tick);tick=null;var cd=$('#countdown');if(!state.interval){state.nextAt=null;cd.textContent='';return;}state.nextAt=Date.now()+state.interval*60000;tick=setInterval(onTick,1000);onTick();}
+function onTick(){var left=state.nextAt-Date.now();if(left<=0){state.nextAt=Date.now()+state.interval*60000;if(!busy)refreshAll();return;}var s=Math.ceil(left/1000),m=Math.floor(s/60),h=Math.floor(m/60);var p=function(x){return String(x).padStart(2,'0');};$('#countdown').textContent='Pembaruan berikutnya: '+(h?p(h)+':':'')+p(m%60)+':'+p(s%60);}
+$('#addBtn').addEventListener('click',function(){var urls=($('#linkInput').value.match(/https?:\/\/[^\s]+/g)||[]);if(!urls.length){alert('Tidak ada link yang valid. Tempel link yang diawali http:// atau https://');return;}var have=new Set(state.items.map(function(i){return i.url;}));var added=[];urls.forEach(function(u){if(have.has(u))return;have.add(u);var it={id:uid(),url:u,name:'',data:null,loading:false};state.items.push(it);added.push(it);});$('#linkInput').value='';save();renderTable();renderRecap();if(added.length)refreshItems(added);});
+$('#refreshBtn').addEventListener('click',function(){refreshAll();if(state.interval)setupAuto();});
+$('#autoSel').addEventListener('change',function(e){state.interval=+e.target.value;save();setupAuto();});
+$('#tbody').addEventListener('input',function(e){var id=e.target.getAttribute&&e.target.getAttribute('data-name');if(!id)return;var it=state.items.find(function(x){return x.id===id;});if(it){it.name=e.target.value;save();renderRecap();}});
+$('#tbody').addEventListener('click',function(e){var id=e.target.getAttribute&&e.target.getAttribute('data-del');if(!id)return;state.items=state.items.filter(function(x){return x.id!==id;});save();renderTable();renderRecap();});
+$('#csvBtn').addEventListener('click',function(){var cell=function(v){var s=v==null?'':String(v);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;};var dec=function(n){return n==null?'':String(Math.round(n*100)/100).replace('.',',');};var rows=[['Peringkat','Nama/Instansi','Jumlah Link','Views','Likes','Comments','Shares','Skor Interaksi','Skor Parsial','Estimasi Nilai (maks 30)']];buildRecap().forEach(function(r,i){rows.push([i+1,r.label,r.links,r.views,r.likes,r.comments,r.shares,r.score,r.partial?'Ya':'Tidak',dec(r.nilai)]);});var csv='﻿'+rows.map(function(r){return r.map(cell).join(';');}).join('\r\n');var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.download='rekap-interaksi-hkn62.csv';document.body.appendChild(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);});
+load();
+$('#autoSel').value=String(state.interval);
+renderTable();
+renderRecap();
+setBtns();
+setupAuto();
+})();
+</script>
+</body>
+</html>
