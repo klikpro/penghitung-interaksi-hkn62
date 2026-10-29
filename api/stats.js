@@ -1,5 +1,8 @@
 'use strict';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+// Dengan UA perayap mesin pencari, Instagram & Facebook mengirim versi halaman
+// yang memuat metadata/JSON berisi angka interaksi (terbukti pada uji 29 Okt 2026).
+const GB_UA = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)';
 const TIMEOUT_MS = 8000;
 const KEYS = ['views', 'likes', 'comments', 'shares'];
 const DOMAINS = {
@@ -52,13 +55,13 @@ function parseCount(raw) {
   if (/^\d+$/.test(s)) return parseInt(s, 10);
   return null;
 }
-async function fetchHtml(url) {
+async function fetchHtml(url, ua) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
   try {
     const r = await fetch(url, {
       headers: {
-        'User-Agent': UA,
+        'User-Agent': ua || UA,
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9'
       },
@@ -124,7 +127,7 @@ function fromJsonish(html) {
     return null;
   };
   return {
-    views: first([/"video_view_count":\s*(\d+)/, /"video_play_count":\s*(\d+)/, /"play_count":\s*(\d+)/]),
+    views: first([/"video_view_count":\s*(\d+)/, /"video_play_count":\s*(\d+)/]),
     likes: first([/"edge_media_preview_like":\s*\{\s*"count":\s*(\d+)/, /"edge_liked_by":\s*\{\s*"count":\s*(\d+)/, /"like_count":\s*(\d+)/]),
     comments: first([/"edge_media_to_(?:parent_)?comment":\s*\{\s*"count":\s*(\d+)/, /"comment_count":\s*(\d+)/]),
     shares: null
@@ -177,13 +180,57 @@ async function doTikTok(u) {
   }
   return { stats };
 }
+// Baca angka dari JSON terstruktur di HTML Facebook (versi perayap).
+// Hanya mengambil objek yang terikat ke ID video yang diminta, agar tidak
+// tertukar dengan angka video lain yang ikut termuat di halaman.
+function parseFacebookJson(html, videoId) {
+  const out = { views: null, likes: null, comments: null, shares: null };
+  if (!html) return out;
+  // Views: "associated_video":{...,"id":"<id>"},"video_view_count":216
+  const vre = /"associated_video":\{[^}]*"id":"(\d+)"[^}]*\},"video_view_count":(\d+)/g;
+  let m;
+  while ((m = vre.exec(html)) !== null) {
+    if (!videoId || m[1] === videoId) { out.views = num(m[2]); break; }
+  }
+  // Likes & comments: objek feedback pada data hero video itu sendiri:
+  // "data":{"id":"<id>",...,"feedback":{... "reaction_count":{"count":18} ... "total_comment_count":4 ...}}
+  // ID yang sama bisa muncul di beberapa objek lain (mis. konfigurasi iklan),
+  // jadi semua kemunculan diperiksa sampai ada segmen yang memuat feedback-nya.
+  const segs = [];
+  if (videoId) {
+    const marker = '"data":{"id":"' + videoId + '"';
+    let i = html.indexOf(marker);
+    while (i >= 0 && segs.length < 8) {
+      segs.push(html.slice(i, i + 6000));
+      i = html.indexOf(marker, i + marker.length);
+    }
+  }
+  if (!segs.length) {
+    const j = html.indexOf('"feedback":{');
+    if (j >= 0) segs.push(html.slice(j, j + 6000));
+  }
+  for (const seg of segs) {
+    if (out.likes === null) {
+      const rm = seg.match(/"reaction_count":\{"count":(\d+)/) || seg.match(/"i18n_reaction_count":"(\d+)"/);
+      if (rm) out.likes = num(rm[1]);
+    }
+    if (out.comments === null) {
+      const cm = seg.match(/"total_comment_count":(\d+)/) || seg.match(/"comments":\{"total_count":(\d+)/);
+      if (cm) out.comments = num(cm[1]);
+    }
+    if (out.likes !== null && out.comments !== null) break;
+  }
+  return out;
+}
 async function doFacebook(u) {
   const href = u.href;
   const idm = href.match(/\/reel\/(\d+)/) || href.match(/[?&]v=(\d+)/) || href.match(/\/videos\/(?:[^/]+\/)?(\d+)/);
+  const videoId = idm ? idm[1] : null;
+  const watchUrl = videoId ? 'https://www.facebook.com/watch/?v=' + videoId : null;
   const targets = [];
-  if (idm) targets.push('https://www.facebook.com/watch/?v=' + idm[1]); // bentuk /watch/ diterima server
+  if (watchUrl) targets.push(watchUrl); // bentuk /watch/ diterima server
   if (!targets.includes(href)) targets.push(href);
-  const results = await Promise.all(targets.map(fetchHtml));
+  const results = await Promise.all(targets.map(t => fetchHtml(t)));
   const parts = [];
   let lastErr = '';
   for (const r of results) {
@@ -194,7 +241,16 @@ async function doFacebook(u) {
       lastErr = r.error || (r.status ? 'HTTP ' + r.status : '');
     }
   }
-  // Catatan: JSON di HTML Facebook memuat banyak video lain, sehingga sengaja tidak dipakai agar tidak salah angka.
+  // Versi perayap (Googlebot) memuat JSON terstruktur berisi views/likes/comments
+  // untuk video yang diminta — dipakai lebih dulu, meta menjadi pelengkap (shares).
+  if (watchUrl) {
+    const gb = await fetchHtml(watchUrl, GB_UA);
+    if (gb.html && gb.status < 400) {
+      parts.unshift(parseFacebookJson(gb.html, videoId));
+      const map = metaMap(gb.html);
+      parts.push(fromText(textFromMeta(map, 'Facebook')));
+    }
+  }
   const stats = merge(...parts);
   if (KEYS.every(k => stats[k] === null)) {
     return { stats: null, hint: 'Metadata Facebook tidak memuat angka interaksi' + (lastErr ? ' (' + lastErr + ')' : '') + '.' };
@@ -211,9 +267,27 @@ async function doInstagram(u) {
     if (r.html && r.status < 400) {
       const map = metaMap(r.html);
       parts.push(fromText(textFromMeta(map, 'Instagram')));
-      if (i === 1) parts.push(fromJsonish(r.html));
+      if (i === 1) {
+        // Halaman embed: hanya likes/comments yang dipakai. Angka views dari
+        // JSON embed muncul tidak konsisten antarpermintaan dan tidak dapat
+        // dipastikan milik postingan ini, jadi sengaja tidak dipakai.
+        const ej = fromJsonish(r.html);
+        parts.push({ views: null, likes: ej.likes, comments: ej.comments, shares: null });
+      }
     }
   });
+  // Versi perayap (Googlebot): meta description memuat "49 likes, 0 comments"
+  // dan JSON media memuat like_count/comment_count — dengan UA browser biasa
+  // halaman yang dikirim hanya kerangka aplikasi tanpa angka.
+  const gb = await fetchHtml(u.href, GB_UA);
+  if (gb.html && gb.status < 400) {
+    const map = metaMap(gb.html);
+    parts.unshift(fromText(textFromMeta(map, 'Instagram')));
+    // Dari JSON halaman utama hanya likes/comments yang diambil: halaman ini
+    // juga memuat media lain, jadi angka views dari JSON generik tidak dipercaya.
+    const gj = fromJsonish(gb.html);
+    parts.push({ views: null, likes: gj.likes, comments: gj.comments, shares: null });
+  }
   const stats = merge(...parts);
   if (KEYS.every(k => stats[k] === null)) {
     return { stats: null, hint: 'Instagram tidak menampilkan angka interaksi pada HTML publik (umumnya butuh login atau permintaan diblokir). Angka sengaja dikosongkan, tidak dikarang.' };
